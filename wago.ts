@@ -77,36 +77,3 @@ namespace WAGO {
         game.value += 1;
     }
 }
-
-
-// //% color="#6EC800" weight=100
-// namespace WAGO {
-//     //% block 
-//     export function helloWagoWorld(x: number) {
-
-//     }
-
-//     // note that Caml casing yields lower case
-//     // block text with spaces
-
-//     //% weight=45 blockAllowMultiple=1
-//     //% interval.shadow=longTimePicker
-//     //% afterOnStart=true
-//     //% block="Hot Wire Game"
-//     export function everyInterval(on_start: () => void, a: () => void): void {
-//         control.runInParallel(() => {
-//             let start = 0;
-//             on_start();
-//             while (true) {
-//                 start = control.millis();
-//                 a();
-//                 pause(Math.max(0, 100 - (control.millis() - start)));
-//             }
-//         });
-//     }
-
-//     //% block
-//     export function ledson() {
-//         basic.setLedColors(0xff0000, 0xff0000, 0xff0000)
-//     }
-// }
