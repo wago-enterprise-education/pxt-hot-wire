@@ -1,9 +1,6 @@
-// Gib deinen Code hier ein
-/**
- * Use the "fixedInstance" macro to create a 
- * set number of instances for a given class.
- */
+// // Gib deinen Code hier ein
 
+//% block
 enum PlayerMode {
     Start,
     Maus,
@@ -11,69 +8,153 @@ enum PlayerMode {
     Ende
 }
 
-//% fixedInstances
-//% blockNamespace=WAGO
-class HotWireGame {
-    public value: number;
-    public player: PlayerMode;
-    public before_start: { (): void; };
-    public on_finish: { (): void; };
-
-    constructor() {
-        this.value = 0;
-        this.player = PlayerMode.Start;
-    }
+enum GameEvent {
+    A,
+    B,
+    AB,
+    WireTouch,
+    WireLoose,
+    DestinationTouch
 }
 
-//% color=#6ec800
-namespace WAGO {
-    //% fixedInstance whenUsed
-    export const game = new HotWireGame();
+//% color=#6EC800
+//% block="Maus Heiße Bahn"
+namespace MausHeisseBahn {
+    let player: PlayerMode = PlayerMode.Start;
+    let eventQueue: GameEvent[] = [];
+    let timeMaus: number = 0;
+    let timeElefant: number = 0;
 
-    function _gameloop() {
-        basic.clearScreen()
-        for (let x=0; x<5; ++x) {
-            for (let y=0; y<5; ++y) {
-                let d = x*5+y;
-                let mask = 1 << d;
-                if ((game.value & mask) >= 1) led.plot(x,y);
-            }
-        }
-        // basic.showNumber(game.value);
-        basic.pause(100);
-        game.value += 1;
+    let on_start_handler: () => void = () => { };
+    let on_maus_handler: () => void = () => { };
+    let on_elefant_handler: () => void = () => { };
+    let on_ende_handler: () => void = () => { };
+
+
+    function init() {
+        player = PlayerMode.Start;
+        eventQueue = [];
+        timeMaus = 0;
+        timeElefant = 0;
     }
 
-    control.runInParallel(() => {
-        let start = 0;
+    //% block
+    export function current_player_text() {
+        switch (player) {
+            case PlayerMode.Start:
+                return "Wer soll anfangen?"
+            case PlayerMode.Maus:
+                return "Maus"
+            case PlayerMode.Elefant:
+                return "Elefant"
+            case PlayerMode.Ende:
+                return "Sieger steht fest"
+        }
+    }
+
+    //% block
+    export function current_player() {
+        return player;
+    }
+
+    //% block
+    export function event_queue() {
+        return "" + eventQueue;
+    }
+
+    //% block="Die Maus fängt an"
+    export function maus_zuerst() {
+        eventQueue.push(GameEvent.A)
+    }
+
+    //% block="Der Elefant fängt an"
+    export function elefant_zuerst() {
+        eventQueue.push(GameEvent.B)
+    }
+
+    //% block="Reset"
+    export function reset() {
+        eventQueue.push(GameEvent.AB)
+    }
+
+    //% block
+    export function on_start(a: () => void) {
+        on_start_handler = a
+    }
+
+    //% block
+    export function on_maus(a: () => void) {
+        on_maus_handler = a
+    }
+
+    //% block
+    export function on_elefant(a: () => void) {
+        on_elefant_handler = a
+    }
+
+    //% block
+    export function on_ende(a: () => void) {
+        on_ende_handler = a
+    }
+
+    control.runInBackground(() => {
+        let e: GameEvent | undefined = undefined;
         while (true) {
-            start = control.millis();
-            _gameloop();
-            pause(Math.max(0, 100 - (control.millis() - start)));
+            switch (player) {
+                case PlayerMode.Start:
+                    on_start_handler();
+                    break;
+                case PlayerMode.Maus:
+                    on_maus_handler();
+                    break;
+                case PlayerMode.Elefant:
+                    on_elefant_handler();
+                    break;
+                case PlayerMode.Ende:
+                    on_ende_handler();
+                    break;
+            }
+            while (typeof (e = eventQueue.shift()) !== "undefined") {
+                switch (player) {
+                    case PlayerMode.Start:
+                        switch (e) {
+                            case GameEvent.A:
+                                player = PlayerMode.Maus;
+                                break;
+                            case GameEvent.B:
+                                player = PlayerMode.Elefant;
+                                break;
+                            case GameEvent.AB:
+                                player = PlayerMode.Start;
+                        }
+                        break;
+                    case PlayerMode.Maus:
+                        switch (e) {
+                            case GameEvent.B:
+                                player = PlayerMode.Elefant;
+                                break;
+                            case GameEvent.AB:
+                                player = PlayerMode.Start;
+                        }
+                        break;
+                    case PlayerMode.Elefant:
+                        switch (e) {
+                            case GameEvent.A:
+                                player = PlayerMode.Maus;
+                                break;
+                            case GameEvent.AB:
+                                player = PlayerMode.Start;
+                        }
+                        break;
+                    case PlayerMode.Ende:
+                        switch (e) {
+                            case GameEvent.AB:
+                                player = PlayerMode.Start;
+                        }
+                        break;
+                }
+            }
+            basic.pause(100)
         }
-    });
-
-    //% block
-    export function set_before_start(a: () => void): void {
-        game.before_start = a;
-    }
-    //% block="Increment value"
-    export function inc() {
-        game.before_start();
-        game.value += 1;
-    }
-    //% block
-    export function decrement(): void {
-        game.value -= 1;
-    }
-    //% block
-    export function value(): number {
-        return game.value;
-    }
-    //% block
-    export function game_loop() {
-        basic.showNumber(game.value);
-        basic.pause(100);
-        game.value += 1;
-    }
+    })
 }
