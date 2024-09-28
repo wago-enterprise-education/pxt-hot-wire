@@ -1,160 +1,198 @@
-// // Gib deinen Code hier ein
-
 //% block
-enum PlayerMode {
-    Start,
-    Maus,
-    Elefant,
-    Ende
+enum GameStatus {
+    //% block="Warte auf Spielstart"
+    WaitForStart,
+    //% block="Bahn berührt"
+    Touched,
+    //% block="Bahn verlassen"
+    Dropped,
+    //% block="Ziel erreicht"
+    Finished
 }
 
-enum GameEvent {
-    A,
-    B,
-    AB,
-    WireTouch,
-    WireLoose,
-    DestinationTouch
-}
+//% weight=100 color=#6ec800
+namespace WAGO {
+    let game_id = 0
 
-//% color=#6EC800
-//% block="Maus Heiße Bahn"
-namespace MausHeisseBahn {
-    let player: PlayerMode = PlayerMode.Start;
-    let eventQueue: GameEvent[] = [];
-    let timeMaus: number = 0;
-    let timeElefant: number = 0;
+    pins.setPull(DigitalPin.P0, PinPullMode.PullUp)
+    pins.setPull(DigitalPin.P1, PinPullMode.PullUp)
 
-    let on_start_handler: () => void = () => { };
-    let on_maus_handler: () => void = () => { };
-    let on_elefant_handler: () => void = () => { };
-    let on_ende_handler: () => void = () => { };
+    export class Game {
+        public id: number
+        public status: GameStatus
+        public time: number
+        public start_time: number
+        public enter_handler: { [key: number]: () => void; } = {}
+        // public on_handler: { [key: number]: () => void; } = {}
+        public exit_handler: { [key: number]: () => void; } = {}
 
+        constructor() {
+            this.id = game_id
+            game_id++
+            this.reset()
 
-    function init() {
-        player = PlayerMode.Start;
-        eventQueue = [];
-        timeMaus = 0;
-        timeElefant = 0;
-    }
+            this.enter_handler[GameStatus.WaitForStart] = () => {
+                // basic.showNumber(this.id)
+                basic.setLedColor(0xffffff)
+            }
+            this.enter_handler[GameStatus.Touched] = () => {
+                // basic.showNumber(this.id)
+                basic.setLedColor(0x00ff00)
+            }
+            this.enter_handler[GameStatus.Dropped] = () => {
+                // basic.showNumber(this.id)
+                basic.setLedColor(0xff0000)
+                music.playTone(Note.C, music.beat(BeatFraction.Quarter))
+            }
+            this.enter_handler[GameStatus.Finished] = () => {
+                // basic.showNumber(this.id)
+                basic.setLedColor(0x0000ff)
+            }
 
-    //% block
-    export function current_player_text() {
-        switch (player) {
-            case PlayerMode.Start:
-                return "Wer soll anfangen?"
-            case PlayerMode.Maus:
-                return "Maus"
-            case PlayerMode.Elefant:
-                return "Elefant"
-            case PlayerMode.Ende:
-                return "Sieger steht fest"
+            // this.on_handler[GameStatus.WaitForStart] = () => {}
+            // this.on_handler[GameStatus.Touched] = () => { }
+            // this.on_handler[GameStatus.Dropped] = () => { }
+            // this.on_handler[GameStatus.Finished] = () => {
+            //     // basic.showNumber(this.time / 1000)
+            //     // basic.pause(100)
+            // }
+
+            this.exit_handler[GameStatus.WaitForStart] = () => { }
+            this.exit_handler[GameStatus.Touched] = () => { }
+            this.exit_handler[GameStatus.Dropped] = () => { }
+            this.exit_handler[GameStatus.Finished] = () => { }
+        }
+
+        //% block="Setze $this zurück"
+        //% this.defl=Spiel
+        //% this.shadow=variables_get
+        reset() {
+            this.status = GameStatus.WaitForStart
+            this.time = 0
+            this.start_time = 0
+        }
+
+        //% block="Zeit von $this"
+        //% this.defl=Spiel
+        //% this.shadow=variables_get
+        get ergebnis() {
+            return this.time / 1000
+        }
+
+        //% block="Strafzeit von $seconds für $this"
+        //% this.defl=Spiel
+        //% this.shadow=variables_get
+        public setze_strafzeit(seconds: number) {
+            this.time += seconds * 1000
+        }
+
+        //% block="Spiel $this beendet"
+        //% this.defl=Spiel
+        //% this.shadow=variables_get
+        get finished() {
+            return this.status == GameStatus.Finished
+        }
+
+        //% block="$this: beim Start von $status"
+        //% this.defl=Spiel
+        //% this.shadow=variables_get
+        //% handlerStatement
+        set_enter_handler(status: GameStatus, a: () => void) {
+            this.enter_handler[status] = a
+        }
+
+        // //% block="$this: während $status"
+        // //% this.defl=Spiel
+        // //% this.shadow=variables_get
+        // //% handlerStatement
+        // set_on_handler(status: GameStatus, a: () => void) {
+        //     this.on_handler[status] = a
+        // }
+
+        //% block="$this: zum Ende von $status"
+        //% this.defl=Spiel
+        //% this.shadow=variables_get
+        //% handlerStatement
+        set_exit_handler(status: GameStatus, a: () => void) {
+            this.exit_handler[status] = a
         }
     }
 
-    //% block
-    export function current_player() {
-        return player;
+    let currentGame: Game|undefined = undefined
+
+    //% block="neues Spiel"
+    //% blockSetVariable=Spiel
+    export function createGame(): Game {
+        return new Game()
     }
 
-    //% block
-    export function event_queue() {
-        return "" + eventQueue;
-    }
-
-    //% block="Die Maus fängt an"
-    export function maus_zuerst() {
-        eventQueue.push(GameEvent.A)
-    }
-
-    //% block="Der Elefant fängt an"
-    export function elefant_zuerst() {
-        eventQueue.push(GameEvent.B)
-    }
-
-    //% block="Reset"
-    export function reset() {
-        eventQueue.push(GameEvent.AB)
-    }
-
-    //% block
-    export function on_start(a: () => void) {
-        on_start_handler = a
-    }
-
-    //% block
-    export function on_maus(a: () => void) {
-        on_maus_handler = a
-    }
-
-    //% block
-    export function on_elefant(a: () => void) {
-        on_elefant_handler = a
-    }
-
-    //% block
-    export function on_ende(a: () => void) {
-        on_ende_handler = a
-    }
-
-    control.runInBackground(() => {
-        let e: GameEvent | undefined = undefined;
-        while (true) {
-            switch (player) {
-                case PlayerMode.Start:
-                    on_start_handler();
-                    break;
-                case PlayerMode.Maus:
-                    on_maus_handler();
-                    break;
-                case PlayerMode.Elefant:
-                    on_elefant_handler();
-                    break;
-                case PlayerMode.Ende:
-                    on_ende_handler();
-                    break;
+    //% block="Aktiviere Spiel $game"
+    //% game.defl=Spiel
+    //% game.shadow=variables_get
+    export function activate(game: Game) {
+        if (currentGame != undefined) {
+            if ((currentGame.status == GameStatus.Touched) || (currentGame.status == GameStatus.Dropped)) {
+                return
             }
-            while (typeof (e = eventQueue.shift()) !== "undefined") {
-                switch (player) {
-                    case PlayerMode.Start:
-                        switch (e) {
-                            case GameEvent.A:
-                                player = PlayerMode.Maus;
-                                break;
-                            case GameEvent.B:
-                                player = PlayerMode.Elefant;
-                                break;
-                            case GameEvent.AB:
-                                player = PlayerMode.Start;
-                        }
-                        break;
-                    case PlayerMode.Maus:
-                        switch (e) {
-                            case GameEvent.B:
-                                player = PlayerMode.Elefant;
-                                break;
-                            case GameEvent.AB:
-                                player = PlayerMode.Start;
-                        }
-                        break;
-                    case PlayerMode.Elefant:
-                        switch (e) {
-                            case GameEvent.A:
-                                player = PlayerMode.Maus;
-                                break;
-                            case GameEvent.AB:
-                                player = PlayerMode.Start;
-                        }
-                        break;
-                    case PlayerMode.Ende:
-                        switch (e) {
-                            case GameEvent.AB:
-                                player = PlayerMode.Start;
-                        }
-                        break;
-                }
-            }
-            basic.pause(100)
+            currentGame.exit_handler[currentGame.status]()
         }
-    })
+        currentGame = game
+        currentGame.enter_handler[currentGame.status]()
+    }
+
+    //% block="Deaktiviere Spiele"
+    export function activate_none() {
+        if (currentGame != undefined) {
+            if ((currentGame.status == GameStatus.Touched) || (currentGame.status == GameStatus.Dropped)) {
+                return
+            }
+            currentGame.exit_handler[currentGame.status]()
+        }
+        currentGame = undefined
+    }
+
+    basic.forever(() => on_status())
+
+    function on_status() {
+        if (currentGame != undefined) {
+            let new_status = currentGame.status
+            let new_time = control.millis()
+            let P0 = pins.digitalReadPin(DigitalPin.P0)
+            let P1 = pins.digitalReadPin(DigitalPin.P1)
+            // currentGame.on_handler[currentGame.status]()
+            switch (currentGame.status) {
+                case GameStatus.WaitForStart:
+                    if (P0 == 0) {
+                        new_status = GameStatus.Touched
+                    }
+                    break
+                case GameStatus.Touched:
+                    currentGame.time = currentGame.time + new_time - currentGame.start_time
+                    if (P0 == 1) {
+                        new_status = GameStatus.Dropped
+                    }
+                    if (P1 == 0) {
+                        new_status = GameStatus.Finished
+                    }
+                    break
+                case GameStatus.Dropped:
+                    if (P0 == 0) {
+                        new_status = GameStatus.Touched
+                    }
+                    if (P1 == 0) {
+                        new_status = GameStatus.Finished
+                    }
+                    break
+                case GameStatus.Finished:
+                    break
+            }
+            if (currentGame.status != new_status) {
+                currentGame.exit_handler[currentGame.status]()
+                currentGame.status = new_status
+                currentGame.enter_handler[currentGame.status]()
+            }
+            currentGame.start_time = new_time
+            basic.pause(20)
+        }
+    }
 }
