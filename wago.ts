@@ -79,6 +79,21 @@ namespace WAGO {
             return this.time / 1000
         }
 
+        //% block="Zeige Zeit von $this"
+        //% this.defl=Spiel
+        //% this.shadow=variables_get
+        public zeige_zeit() {
+            for (let x = 0; x <= 4; x++) {
+                for (let y = 0; y <= 4; y++) {
+                    if ((y * 5 + x) * 5 < this.ergebnis) {
+                        led.plot(x, y)
+                    } else {
+                        led.unplot(x, y)
+                    }
+                }
+            }
+        }
+
         //% block="Strafzeit von $seconds für $this"
         //% this.defl=Spiel
         //% this.shadow=variables_get
@@ -118,7 +133,7 @@ namespace WAGO {
         }
     }
 
-    let currentGame: Game|undefined = undefined
+    let currentGame: Game | undefined = undefined
 
     //% block="neues Spiel"
     //% blockSetVariable=Spiel
