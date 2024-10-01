@@ -157,29 +157,29 @@ namespace WAGO {
         if (currentGame != undefined) {
             let new_status = currentGame.status
             let new_time = control.millis()
-            let P0 = pins.digitalReadPin(DigitalPin.P0)
-            let P1 = pins.digitalReadPin(DigitalPin.P1)
+            let Ziel = pins.digitalReadPin(DigitalPin.P0)
+            let Start = pins.digitalReadPin(DigitalPin.P1)
             // currentGame.on_handler[currentGame.status]()
             switch (currentGame.status) {
                 case GameStatus.WaitForStart:
-                    if (P0 == 0) {
+                    if (Start == 0) {
                         new_status = GameStatus.Touched
                     }
                     break
                 case GameStatus.Touched:
                     currentGame.time = currentGame.time + new_time - currentGame.start_time
-                    if (P0 == 1) {
+                    if (Start == 1) {
                         new_status = GameStatus.Dropped
                     }
-                    if (P1 == 0) {
+                    if (Ziel == 0) {
                         new_status = GameStatus.Finished
                     }
                     break
                 case GameStatus.Dropped:
-                    if (P0 == 0) {
+                    if (Start == 0) {
                         new_status = GameStatus.Touched
                     }
-                    if (P1 == 0) {
+                    if (Ziel == 0) {
                         new_status = GameStatus.Finished
                     }
                     break
